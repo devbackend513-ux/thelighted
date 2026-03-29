@@ -11,106 +11,112 @@ import {
   SortingState,
   ColumnDef,
 } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import Image from "next/image";
+import { ArrowUpDown, Eye, EyeOff, Trash2 } from "lucide-react";
+import { GalleryImage } from "@/lib/api/admin";
 import { Button } from "../ui/Button";
 
-interface AuditLogsTableProps {
-  data: any[];
+interface GalleryTableProps {
+  images: GalleryImage[];
+  onToggleVisibility: (id: string) => void;
+  onDelete: (image: GalleryImage) => void;
 }
 
-export function AuditLogsTable({ data }: AuditLogsTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "createdAt", desc: true },
-  ]);
+export function GalleryTable({ images, onToggleVisibility, onDelete }: GalleryTableProps) {
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
 
-  const columns = useMemo<ColumnDef<any>[]>(
+  const columns = useMemo<ColumnDef<GalleryImage>[]>(
     () => [
       {
-        accessorKey: "action",
-        header: ({ column }) => (
-          <button
-            onClick={() => column.toggleSorting()}
-            className="flex items-center gap-2 hover:text-orange-600"
-          >
-            Action <ArrowUpDown className="w-4 h-4" />
-          </button>
-        ),
+        accessorKey: "imageUrl",
+        header: "Image",
         cell: ({ row }) => (
-          <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium uppercase">
-            {row.original.action}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "entityType",
-        header: "Entity",
-        cell: ({ row }) => (
-          <div>
-            <div className="font-medium text-gray-900 capitalize">
-              {row.original.entityType}
-            </div>
-            {row.original.entityId && (
-              <div className="text-xs text-gray-400 font-mono truncate max-w-[120px]">
-                {row.original.entityId}
-              </div>
-            )}
+          <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+            <Image
+              src={row.original.imageUrl}
+              alt={row.original.alt}
+              fill
+              className="object-cover"
+              sizes="64px"
+            />
           </div>
-        ),
-      },
-      {
-        accessorKey: "actorUsername",
-        header: "Actor",
-        cell: ({ row }) => (
-          <div>
-            <div className="font-medium text-gray-900">
-              {row.original.actorUsername ?? "System"}
-            </div>
-            {row.original.actorRole && (
-              <div className="text-xs text-gray-400 capitalize">
-                {row.original.actorRole}
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "details",
-        header: "Details",
-        cell: ({ row }) => (
-          <span className="text-sm text-gray-600 truncate max-w-xs block">
-            {typeof row.original.details === "string"
-              ? row.original.details
-              : JSON.stringify(row.original.details)}
-          </span>
         ),
         enableSorting: false,
       },
       {
-        accessorKey: "createdAt",
+        accessorKey: "alt",
         header: ({ column }) => (
           <button
             onClick={() => column.toggleSorting()}
             className="flex items-center gap-2 hover:text-orange-600"
           >
-            Time <ArrowUpDown className="w-4 h-4" />
+            Alt Text <ArrowUpDown className="w-4 h-4" />
           </button>
         ),
         cell: ({ row }) => (
-          <span className="text-sm text-gray-500">
-            {formatDistanceToNow(new Date(row.original.createdAt), {
-              addSuffix: true,
-            })}
+          <span className="text-gray-900 font-medium">{row.original.alt}</span>
+        ),
+      },
+      {
+        accessorKey: "category",
+        header: "Category",
+        cell: ({ row }) => (
+          <span className="capitalize px-2 py-1 bg-gray-100 rounded text-sm">
+            {row.original.category}
           </span>
         ),
       },
+      {
+        accessorKey: "isVisible",
+        header: "Visibility",
+        cell: ({ row }) => (
+          <span
+            className={`px-2 py-1 rounded text-sm font-medium ${
+              row.original.isVisible
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {row.original.isVisible ? "Visible" : "Hidden"}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onToggleVisibility(row.original.id)}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            >
+              {row.original.isVisible ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(row.original)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        ),
+        enableSorting: false,
+      },
     ],
-    []
+    [onToggleVisibility, onDelete]
   );
 
   const table = useReactTable({
-    data,
+    data: images,
     columns,
     state: { sorting, globalFilter },
     onSortingChange: setSorting,
@@ -119,14 +125,14 @@ export function AuditLogsTable({ data }: AuditLogsTableProps) {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 15 } },
+    initialState: { pagination: { pageSize: 10 } },
   });
 
   return (
     <div className="space-y-4">
       <input
         type="search"
-        placeholder="Search logs..."
+        placeholder="Search images..."
         value={globalFilter}
         onChange={(e) => setGlobalFilter(e.target.value)}
         className="w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -156,7 +162,7 @@ export function AuditLogsTable({ data }: AuditLogsTableProps) {
                     colSpan={columns.length}
                     className="px-6 py-12 text-center text-gray-500"
                   >
-                    No audit logs found
+                    No images found
                   </td>
                 </tr>
               ) : (
@@ -177,17 +183,8 @@ export function AuditLogsTable({ data }: AuditLogsTableProps) {
         {table.getPageCount() > 1 && (
           <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
             <p className="text-sm text-gray-700">
-              Showing{" "}
-              {table.getState().pagination.pageIndex *
-                table.getState().pagination.pageSize +
-                1}
-              –
-              {Math.min(
-                (table.getState().pagination.pageIndex + 1) *
-                  table.getState().pagination.pageSize,
-                data.length
-              )}{" "}
-              of {data.length}
+              Page {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount()}
             </p>
             <div className="flex gap-2">
               <Button
